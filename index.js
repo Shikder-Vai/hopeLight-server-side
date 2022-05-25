@@ -75,6 +75,20 @@ const run = async () => {
       res.send({ clientSecret: paymentIntent.client_secret });
     });
 
+    app.get("/review", async (req, res) => {
+      const query = {};
+      const cursor = reviewCollection.find(query);
+      const reviews = await cursor.toArray();
+      res.send(reviews.reverse());
+    });
+
+    app.post("/review", async (req, res) => {
+      const review = req.body;
+
+      const result = await reviewCollection.insertOne(review);
+      res.send(result);
+    });
+
     app.get("/product/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };
