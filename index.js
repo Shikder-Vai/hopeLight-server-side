@@ -38,13 +38,43 @@ const client = new MongoClient(uri, {
 const run = async () => {
   try {
     await client.connect();
-    const productsCollection = client.db("products").collection("product");
+    const productsCollection = client.db("HopLight").collection("products");
     app.get("/products", async (req, res) => {
       const query = {};
       const cursor = productsCollection.find(query);
       const products = await cursor.toArray();
       res.send(products);
     });
+    await client.connect();
+    const reviewCollection = client.db("HopLight").collection("reviews");
+    const userCollection = client.db("HopLight").collection("users");
+    const profileCollection = client.db("HopLight").collection("profile");
+    const purchaseCollection = client.db("HopLight").collection("purchases");
+    const paymentCollection = client.db("HopLight").collection("payments");
+
+    const verifyAdmin = async (req, res, next) => {
+      const requester = req.decoded.email;
+      const requesterAccount = await userCollection.findOne({
+        email: requester,
+      });
+      if (requesterAccount.role === "admin") {
+        next();
+      } else {
+        res.status(403).send({ message: "forbidden" });
+      }
+    };
+    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
+      const service = req.body;
+      const price = service.price;
+      const amount = price * 100;
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({ clientSecret: paymentIntent.client_secret });
+    });
+
     app.get("/product/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };
