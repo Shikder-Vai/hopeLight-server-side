@@ -229,6 +229,19 @@ const run = async () => {
       const products = await purchaseCollection.findOne(query);
       res.send(products);
     });
+    app.get("/purchase", verifyJWT, async (req, res) => {
+      const query = {};
+      const cursor = purchaseCollection.find(query);
+      const purchases = await cursor.toArray();
+      res.send(purchases);
+    });
+    app.get("/purchase/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const cursor = purchaseCollection.find(query);
+      const purchases = await cursor.toArray();
+      res.send(purchases);
+    });
   } finally {
     // client.close();
   }
