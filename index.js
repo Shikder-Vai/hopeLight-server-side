@@ -186,6 +186,49 @@ const run = async () => {
       );
       res.send({ result, token });
     });
+    app.put("/purchase/:id", verifyJWT, (req, res) => {
+      const id = req.params.id;
+      const total = req.body;
+      const filter = { _id: ObjectId(id) };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          name: total.name,
+          productName: total.productName,
+          phone: total.phone,
+          quantity: total.quantity,
+          price: total.price,
+          email: total.email,
+        },
+      };
+
+      const result = purchaseCollection.updateOne(filter, updateDoc, options);
+      res.send(result);
+    });
+    app.patch("/purchase/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const payment = req.body;
+      const filter = { _id: ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          paid: true,
+          transactionId: payment.transactionId,
+        },
+      };
+
+      const result = await paymentCollection.insertOne(payment);
+      const updatedPurchase = await purchaseCollection.updateOne(
+        filter,
+        updatedDoc
+      );
+      res.send(updatedPurchase);
+    });
+    app.get("/purchase/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const products = await purchaseCollection.findOne(query);
+      res.send(products);
+    });
   } finally {
     // client.close();
   }
