@@ -108,6 +108,28 @@ const run = async () => {
       const result = await productsCollection.deleteOne(query);
       res.send(result);
     });
+    app.get("/user", verifyJWT, async (req, res) => {
+      const users = await userCollection.find().toArray();
+      res.send(users);
+    });
+
+    app.put("/profile/:email", verifyJWT, async (req, res) => {
+      const email = req.params.id;
+      const users = req.body;
+      const filter = { email: email };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          name: users.name,
+          education: users.education,
+          job: users.job,
+          phone: users.phone,
+          city: users.city,
+        },
+      };
+      const result = profileCollection.updateOne(filter, updateDoc, options);
+      res.send(result);
+    });
   } finally {
     // client.close();
   }
