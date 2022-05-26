@@ -1,31 +1,34 @@
-const express = require("express");
-const cors = require("cors");
-const port = process.env.PORT || 5000;
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-const app = express();
-const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
+const express = require("express");
+const cors = require("cors");
+
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+
+const jwt = require("jsonwebtoken");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const app = express();
+const port = process.env.PORT || 5000;
 // middleware
 app.use(cors());
 app.use(express.json());
 
-function verifyJWT(req, res, next) {
-  const tokenInfo = req.headers.authorization;
+// function verifyJWT(req, res, next) {
+//   const tokenInfo = req.headers.authorization;
 
-  if (!tokenInfo) {
-    return res.status(401).send({ message: "Unouthorize access" });
-  }
-  const token = tokenInfo.split(" ")[1];
-  jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
-    if (err) {
-      return res.status(403).send({ message: "Forbidden access" });
-    } else {
-      req.decoded = decoded;
-      next();
-    }
-  });
-}
+//   if (!tokenInfo) {
+//     return res.status(401).send({ message: "Unouthorize access" });
+//   }
+//   const token = tokenInfo.split(" ")[1];
+//   jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
+//     if (err) {
+//       return res.status(403).send({ message: "Forbidden access" });
+//     } else {
+//       req.decoded = decoded;
+//       next();
+//     }
+//   });
+// }
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@hoplight.l1mui.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -49,7 +52,7 @@ const run = async () => {
     const reviewCollection = client.db("HopLight").collection("reviews");
     const userCollection = client.db("HopLight").collection("users");
     const profileCollection = client.db("HopLight").collection("profile");
-    const purchaseCollection = client.db("HopLight").collection("purchases");
+    const purchaseCollection = client.db("HopLight").collection("purchase");
     const paymentCollection = client.db("HopLight").collection("payments");
 
     const verifyAdmin = async (req, res, next) => {
@@ -63,7 +66,7 @@ const run = async () => {
         res.status(403).send({ message: "forbidden" });
       }
     };
-    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
+    app.post("/create-payment-intent", async (req, res) => {
       const service = req.body;
       const price = service.price;
       const amount = price * 100;
@@ -108,12 +111,12 @@ const run = async () => {
       const result = await productsCollection.deleteOne(query);
       res.send(result);
     });
-    app.get("/user", verifyJWT, async (req, res) => {
+    app.get("/user", async (req, res) => {
       const users = await userCollection.find().toArray();
       res.send(users);
     });
 
-    app.put("/profile/:email", verifyJWT, async (req, res) => {
+    app.put("/profile/:email", async (req, res) => {
       const email = req.params.id;
       const users = req.body;
       const filter = { email: email };
@@ -137,13 +140,13 @@ const run = async () => {
       const result = await profileCollection.findOne(filter);
       res.send(result);
     });
-    app.get("/profile/:user.email", verifyJWT, async (req, res) => {
+    app.get("/profile/:user.email", async (req, res) => {
       const user = req.params.user;
       const query = { email: user };
       const profile = await profileCollection.findOne(query);
       res.send(profile);
     });
-    app.get("/admin/:email", verifyJWT, async (req, res) => {
+    app.get("/admin/:email", async (req, res) => {
       const email = req.params.email;
       const user = await userCollection.findOne({ email: email });
       const isAdmin = user?.role === "admin";
@@ -182,11 +185,11 @@ const run = async () => {
       const token = jwt.sign(
         { email: email },
         process.env.ACCESS_TOKEN_SECRET,
-        { expiresIn: "1h" }
+        { expiresIn: "12h" }
       );
       res.send({ result, token });
     });
-    app.put("/purchase/:id", verifyJWT, (req, res) => {
+    app.put("/purchase/:id", (req, res) => {
       const id = req.params.id;
       const total = req.body;
       const filter = { _id: ObjectId(id) };
@@ -205,7 +208,7 @@ const run = async () => {
       const result = purchaseCollection.updateOne(filter, updateDoc, options);
       res.send(result);
     });
-    app.patch("/purchase/:id", verifyJWT, async (req, res) => {
+    app.patch("/purchase/:id", async (req, res) => {
       const id = req.params.id;
       const payment = req.body;
       const filter = { _id: ObjectId(id) };
@@ -223,19 +226,19 @@ const run = async () => {
       );
       res.send(updatedPurchase);
     });
-    app.get("/purchase/:id", verifyJWT, async (req, res) => {
+    app.get("/purchase/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };
       const products = await purchaseCollection.findOne(query);
       res.send(products);
     });
-    app.get("/purchase", verifyJWT, async (req, res) => {
+    app.get("/purchase", async (req, res) => {
       const query = {};
       const cursor = purchaseCollection.find(query);
       const purchases = await cursor.toArray();
       res.send(purchases);
     });
-    app.get("/purchase/:email", verifyJWT, async (req, res) => {
+    app.get("/purchase/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
       const cursor = purchaseCollection.find(query);
