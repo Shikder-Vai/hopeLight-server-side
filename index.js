@@ -54,6 +54,7 @@ const run = async () => {
     const profileCollection = client.db("HopLight").collection("profile");
     const purchaseCollection = client.db("HopLight").collection("purchase");
     const paymentCollection = client.db("HopLight").collection("payments");
+    const orderCollenction = client.db("HopLight").collection("orders");
 
     const verifyAdmin = async (req, res, next) => {
       const requester = req.decoded.email;
@@ -182,12 +183,12 @@ const run = async () => {
       };
 
       const result = await userCollection.updateOne(filter, updateDoc, options);
-      const token = jwt.sign(
-        { email: email },
-        process.env.ACCESS_TOKEN_SECRET,
-        { expiresIn: "12h" }
-      );
-      res.send({ result, token });
+      // const token = jwt.sign(
+      //   { email: email },
+      //   process.env.ACCESS_TOKEN_SECRET,
+      //   { expiresIn: "12h" }
+      // );
+      res.send({ result });
     });
     app.put("/purchase/:id", (req, res) => {
       const id = req.params.id;
@@ -244,6 +245,72 @@ const run = async () => {
       const cursor = purchaseCollection.find(query);
       const purchases = await cursor.toArray();
       res.send(purchases);
+    });
+    app.post("/order", async (req, res) => {
+      const order = req.body;
+      const result = await orderCollenction.insertOne(order);
+      res.send(result);
+    });
+
+    app.get("/orders", async (req, res) => {
+      const email = req.query.email;
+      const decodedEmail = req.decoded.email;
+      if (email === decodedEmail) {
+        const query = { email: email };
+        const orders = await orderCollenction.find(query).toArray();
+        return res.send(orders);
+      } else {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+    });
+
+    app.get("/allorders", async (req, res) => {
+      const query = {};
+      const orders = await orderCollenction.find(query).toArray();
+      console.log(orders);
+      res.send(orders);
+    });
+
+    app.patch("/paidorders/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          deleverd: true,
+        },
+      };
+      const updatedOrder = await orderCollenction.updateOne(filter, updatedDoc);
+      res.send(updatedOrder);
+    });
+
+    app.get("/orders/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const order = await orderCollenction.findOne(query);
+      res.send(order);
+    });
+
+    app.patch("/orders/:id", async (req, res) => {
+      const id = req.params.id;
+      const payment = req.body;
+      const filter = { _id: ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          paid: true,
+          transactionId: payment.transactionId,
+        },
+      };
+
+      const result = await paymentCollection.insertOne(payment);
+      const updatedOrder = await orderCollenction.updateOne(filter, updatedDoc);
+      res.send(updatedOrder);
+    });
+
+    app.delete("/orders/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const result = await orderCollenction.deleteOne(filter);
+      res.send(result);
     });
   } finally {
     // client.close();
