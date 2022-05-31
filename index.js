@@ -13,22 +13,22 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// function verifyJWT(req, res, next) {
-//   const tokenInfo = req.headers.authorization;
+function verifyJWT(req, res, next) {
+  const tokenInfo = req.headers.authorization;
 
-//   if (!tokenInfo) {
-//     return res.status(401).send({ message: "Unouthorize access" });
-//   }
-//   const token = tokenInfo.split(" ")[1];
-//   jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
-//     if (err) {
-//       return res.status(403).send({ message: "Forbidden access" });
-//     } else {
-//       req.decoded = decoded;
-//       next();
-//     }
-//   });
-// }
+  if (!tokenInfo) {
+    return res.status(401).send({ message: "Unouthorize access" });
+  }
+  const token = tokenInfo.split(" ")[1];
+  jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
+    if (err) {
+      return res.status(403).send({ message: "Forbidden access" });
+    } else {
+      req.decoded = decoded;
+      next();
+    }
+  });
+}
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@hoplight.l1mui.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -252,7 +252,7 @@ const run = async () => {
       res.send(result);
     });
 
-    app.get("/orders", async (req, res) => {
+    app.get("/orders", verifyJWT, async (req, res) => {
       const email = req.query.email;
       const decodedEmail = req.decoded.email;
       if (email === decodedEmail) {
